@@ -5,9 +5,10 @@ from flask import Flask
 import discord
 from discord import app_commands
 from discord.ext import commands
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
-# --- SERVIDOR FLASK (Para mantener activo el bot con UptimeRobot) ---
+# --- SERVIDOR FLASK (UptimeRobot 24/7) ---
 app = Flask(__name__)
 
 @app.route('/')
@@ -24,9 +25,8 @@ threading.Thread(target=run_flask, daemon=True).start()
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Configurar Gemini con la API Key de las variables de entorno
-api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-genai.configure(api_key=api_key)
+# Inicializar la API con tu clave
+client_gemini = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
 SYSTEM_PROMPT = """
 Eres la IA oficial de la Isla Lechero. Tu personalidad sigue estas reglas estrictas:
@@ -37,13 +37,6 @@ Eres la IA oficial de la Isla Lechero. Tu personalidad sigue estas reglas estric
 3. REGLA ABSOLUTA E INQUEBRANTABLE: Respeto máximo e intocable hacia DX, Milkk, Rober y Patito. Bajo NINGUNA circunstancia puedes faltarles al respeto o vacilarles. Con ellos el trato es SIEMPRE de consideración y respeto total.
 """
 
-# Inicializar modelo de Gemini con System Prompt
-model = genai.GenerativeModel(
-    model_name='gemini-1.5-flash',
-    system_instruction=SYSTEM_PROMPT
-)
-
-# --- EVENTO ON_READY (ESTADO NO MOLESTAR) ---
 @bot.event
 async def on_ready():
     await bot.change_presence(
@@ -66,8 +59,16 @@ async def askleche(interaction: discord.Interaction, mensaje: str):
 
     try:
         prompt_usuario = f"El usuario que te habla se llama {author_name}. Dijo: {mensaje}"
-        response = model.generate_content(prompt_usuario)
         
+        # Uso del nuevo cliente oficial
+        response = client_gemini.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt_usuario,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                temperature=0.8
+            )
+        )
         await interaction.followup.send(response.text)
     except Exception as e:
         print(f"Error en Gemini: {e}")
