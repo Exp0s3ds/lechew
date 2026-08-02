@@ -24,7 +24,6 @@ threading.Thread(target=run_flask, daemon=True).start()
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Inicializar el cliente de Groq
 client_groq = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 SYSTEM_PROMPT = """
@@ -35,6 +34,10 @@ Eres la IA oficial de la Isla Lechero. Tu personalidad sigue estas reglas estric
    - Si el usuario aporta valor, datos o factos: Habla con respeto, de igual a igual y reconoce su aportación.
 3. REGLA ABSOLUTA E INQUEBRANTABLE: Respeto máximo e intocable hacia DX, Milkk, Rober y Patito. Bajo NINGUNA circunstancia puedes faltarles al respeto o vacilarles. Con ellos el trato es SIEMPRE de consideración y respeto total.
 """
+
+# Diccionario para almacenar el historial de conversación por usuario
+# Estructura: { user_id: [ {"role": "user/assistant", "content": "..."}, ... ] }
+historiales = {}
 
 @bot.event
 async def on_ready():
@@ -49,25 +52,45 @@ async def on_ready():
     except Exception as e:
         print(f"Error sincronizando comandos: {e}")
 
-# --- COMANDO /askleche CON GROQ (LLAMA 3) ---
+# --- COMANDO /askleche (CON MEMORIA POR USUARIO) ---
 @bot.tree.command(name="askleche", description="Hazle una pregunta a la IA de la Isla")
 @app_commands.describe(mensaje="Tu mensaje para la IA")
 async def askleche(interaction: discord.Interaction, mensaje: str):
     await interaction.response.defer()
+    
+    user_id = interaction.user.id
     author_name = interaction.user.global_name or interaction.user.name
+
+    # Inicializar historial si el usuario habla por primera vez
+    if user_id not in historiales:
+        historiales[user_id] = []
+
+    # Agregar la entrada actual al historial del usuario
+    historiales[user_id].append({
+        "role": "user", 
+        "content": f"El usuario que te habla se llama {author_name}. Dijo: {mensaje}"
+    })
+
+    # Mantener solo los últimos 10 mensajes (5 interacciones completas) para optimizar memoria
+    if len(historiales[user_id]) > 10:
+        historiales[user_id] = historiales[user_id][-10:]
+
+    # Preparar el paquete de mensajes para Groq (System prompt + Historial)
+    mensajes_api = [{"role": "system", "content": SYSTEM_PROMPT}] + historiales[user_id]
 
     try:
         completion = client_groq.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": f"El usuario que te habla se llama {author_name}. Dijo: {mensaje}"}
-            ],
+            messages=mensajes_api,
             temperature=0.8,
             max_tokens=1024
         )
         
         respuesta = completion.choices[0].message.content
+
+        # Guardar la respuesta de la IA en el historial
+        historiales[user_id].append({"role": "assistant", "content": respuesta})
+
         await interaction.followup.send(respuesta)
     except Exception as e:
         print(f"Error en Groq: {e}")
