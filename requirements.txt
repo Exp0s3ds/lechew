@@ -1,4 +1,4 @@
 discord.py>=2.3.0
-openai>=1.0.0
+google-genai
 flask>=3.0.0
 gunicorn>=21.2.0
