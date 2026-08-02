@@ -6,8 +6,9 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from google import genai
+from google.genai import types
 
-# --- SERVIDOR FLASK ---
+# --- SERVIDOR FLASK (UptimeRobot 24/7) ---
 app = Flask(__name__)
 
 @app.route('/')
@@ -24,8 +25,8 @@ threading.Thread(target=run_flask, daemon=True).start()
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Inicializar cliente de Google GenAI
-client_gemini = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+# Lee GEMINI_API_KEY o GOOGLE_API_KEY de las variables de Render
+client_gemini = genai.Client(api_key=os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
 
 SYSTEM_PROMPT = """
 Eres la IA oficial de la Isla Lechero. Tu personalidad sigue estas reglas estrictas:
@@ -49,7 +50,7 @@ async def on_ready():
     except Exception as e:
         print(f"Error sincronizando comandos: {e}")
 
-# --- COMANDO /askleche CON GEMINI ---
+# --- COMANDO /askleche ---
 @bot.tree.command(name="askleche", description="Hazle una pregunta a la IA de la Isla")
 @app_commands.describe(mensaje="Tu mensaje para la IA")
 async def askleche(interaction: discord.Interaction, mensaje: str):
@@ -57,16 +58,20 @@ async def askleche(interaction: discord.Interaction, mensaje: str):
     author_name = interaction.user.global_name or interaction.user.name
 
     try:
-        prompt_completo = f"{SYSTEM_PROMPT}\n\nEl usuario que te habla se llama {author_name}. Dijo: {mensaje}"
+        prompt_usuario = f"El usuario que te habla se llama {author_name}. Dijo: {mensaje}"
         
         response = client_gemini.models.generate_content(
-            model='gemini-1.5-flash',
-            contents=prompt_completo,
+            model='gemini-2.5-flash',
+            contents=prompt_usuario,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                temperature=0.8
+            )
         )
         await interaction.followup.send(response.text)
     except Exception as e:
         print(f"Error en Gemini: {e}")
-        await interaction.followup.send(f"❌ **Error:** `{str(e)[:100]}`")
+        await interaction.followup.send(f"❌ **Error:** `{str(e)[:150]}`")
 
 # --- MODAL Y COMANDO /lechembed ---
 class EmbedModal(discord.ui.Modal, title="Configurar Embed"):
