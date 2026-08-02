@@ -25,7 +25,8 @@ threading.Thread(target=run_flask, daemon=True).start()
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-client_openai = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+api_key = os.environ.get("OPENAI_API_KEY", "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")
+client_openai = openai.OpenAI(api_key=api_key)
 
 SYSTEM_PROMPT = """
 Eres la IA oficial de la Isla Lechero. Tu personalidad sigue estas reglas strictly:
