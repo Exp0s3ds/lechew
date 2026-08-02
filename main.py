@@ -5,8 +5,7 @@ from flask import Flask
 import discord
 from discord import app_commands
 from discord.ext import commands
-from google import genai
-from google.genai import types
+from groq import Groq
 
 # --- SERVIDOR FLASK (UptimeRobot 24/7) ---
 app = Flask(__name__)
@@ -21,12 +20,12 @@ def run_flask():
 
 threading.Thread(target=run_flask, daemon=True).start()
 
-# --- CONFIGURACIÓN DE DISCORD Y GEMINI ---
+# --- CONFIGURACIÓN DE DISCORD Y GROQ ---
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Inicializar la API con tu clave
-client_gemini = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+# Inicializar el cliente de Groq
+client_groq = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 SYSTEM_PROMPT = """
 Eres la IA oficial de la Isla Lechero. Tu personalidad sigue estas reglas estrictas:
@@ -50,7 +49,7 @@ async def on_ready():
     except Exception as e:
         print(f"Error sincronizando comandos: {e}")
 
-# --- COMANDO /askleche ---
+# --- COMANDO /askleche CON GROQ (LLAMA 3) ---
 @bot.tree.command(name="askleche", description="Hazle una pregunta a la IA de la Isla")
 @app_commands.describe(mensaje="Tu mensaje para la IA")
 async def askleche(interaction: discord.Interaction, mensaje: str):
@@ -58,20 +57,20 @@ async def askleche(interaction: discord.Interaction, mensaje: str):
     author_name = interaction.user.global_name or interaction.user.name
 
     try:
-        prompt_usuario = f"El usuario que te habla se llama {author_name}. Dijo: {mensaje}"
-        
-        # Uso del nuevo cliente oficial
-        response = client_gemini.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt_usuario,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
-                temperature=0.8
-            )
+        completion = client_groq.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": f"El usuario que te habla se llama {author_name}. Dijo: {mensaje}"}
+            ],
+            temperature=0.8,
+            max_tokens=1024
         )
-        await interaction.followup.send(response.text)
+        
+        respuesta = completion.choices[0].message.content
+        await interaction.followup.send(respuesta)
     except Exception as e:
-        print(f"Error en Gemini: {e}")
+        print(f"Error en Groq: {e}")
         await interaction.followup.send(f"❌ **Error:** `{str(e)[:150]}`")
 
 # --- MODAL Y COMANDO /lechembed ---
