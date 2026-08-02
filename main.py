@@ -52,7 +52,7 @@ async def on_ready():
     except Exception as e:
         print(f"Error sincronizando comandos: {e}")
 
-# --- COMANDO /askleche ---
+# --- COMANDO /askleche (CON DIAGNÓSTICO DE ERRORES) ---
 @bot.tree.command(name="askleche", description="Hazle una pregunta a la IA de la Isla")
 @app_commands.describe(mensaje="Tu mensaje para la IA")
 async def askleche(interaction: discord.Interaction, mensaje: str):
@@ -68,10 +68,14 @@ async def askleche(interaction: discord.Interaction, mensaje: str):
             ]
         )
         await interaction.followup.send(response.choices[0].message.content)
+    except openai.AuthenticationError:
+        await interaction.followup.send("❌ **Error:** La API Key de OpenAI es inválida o fue revocada.")
+    except openai.RateLimitError:
+        await interaction.followup.send("❌ **Error:** Te quedaste sin créditos en OpenAI o alcanzaste el límite de peticiones.")
     except Exception as e:
-        print(e)
-        await interaction.followup.send("Se rompió algo en el cerebro de la IA, inténtalo luego.")
-
+        print(f"Error detallado: {e}")
+        await interaction.followup.send(f"❌ **Error desconocido:** `{str(e)[:100]}`")
+        
 # --- MODAL Y COMANDO /lechembed ---
 class EmbedModal(discord.ui.Modal, title="Configurar Embed"):
     titulo = discord.ui.TextInput(
