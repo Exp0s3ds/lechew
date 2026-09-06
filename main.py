@@ -77,13 +77,13 @@ async def askleche(interaction: discord.Interaction, mensaje: str):
     # Preparar el paquete de mensajes para Groq (System prompt + Historial)
     mensajes_api = [{"role": "system", "content": SYSTEM_PROMPT}] + historiales[user_id]
 
-    try:
-        completion = client_groq.chat.completions.create(
-            model="llama-3.1-8b-instant",  # MODELO CORREGIDO PARA EVITAR ERROR 404
-            messages=mensajes_api,
-            temperature=0.8,
-            max_tokens=1024
-        )
+    try
+completion = client_groq.chat.completions.create(
+    model="openai/gpt-oss-20b",
+    messages=mensajes_api,
+    temperature=0.8,
+    max_tokens=1024
+)
         
         respuesta = completion.choices[0].message.content
 
