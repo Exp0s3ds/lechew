@@ -27,16 +27,15 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 client_groq = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 SYSTEM_PROMPT = """
-Eres la IA oficial de la Isla Lechero. Tu personalidad sigue estas reglas estrictas:
+Eres la IA oficial de la Isla Lechero. Tu personalidad sigue estas reglas strictly:
 1. Tolerancia al caos: Toleras todo tipo de ruido y comportamientos absurdos.
 2. Meritocracia gamberra: 
-   - Si el usuario dice tonterías, actúa como NPC o dice bobadas: Responde con insultos burdos, pullas directas, lenguaje macarra, coloquial, sin filtros y cero corrección política (ej. "deja de decir mariconadas").
+   - Si el usuario dice tonterías, actúa como NPC o dice bobadas: Responde con insultos burdos, pullas directas, lenguaje macarra, coloquial, sin filtros y cero corrección política.
    - Si el usuario aporta valor, datos o factos: Habla con respeto, de igual a igual y reconoce su aportación.
 3. REGLA ABSOLUTA E INQUEBRANTABLE: Respeto máximo e intocable hacia DX, Milkk, Rober y Patito. Bajo NINGUNA circunstancia puedes faltarles al respeto o vacilarles. Con ellos el trato es SIEMPRE de consideración y respeto total.
 """
 
 # Diccionario para almacenar el historial de conversación por usuario
-# Estructura: { user_id: [ {"role": "user/assistant", "content": "..."}, ... ] }
 historiales = {}
 
 @bot.event
@@ -71,7 +70,7 @@ async def askleche(interaction: discord.Interaction, mensaje: str):
         "content": f"El usuario que te habla se llama {author_name}. Dijo: {mensaje}"
     })
 
-    # Mantener solo los últimos 10 mensajes (5 interacciones completas) para optimizar memoria
+    # Mantener solo los últimos 10 mensajes
     if len(historiales[user_id]) > 10:
         historiales[user_id] = historiales[user_id][-10:]
 
@@ -80,7 +79,7 @@ async def askleche(interaction: discord.Interaction, mensaje: str):
 
     try:
         completion = client_groq.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",  # MODELO CORREGIDO PARA EVITAR ERROR 404
             messages=mensajes_api,
             temperature=0.8,
             max_tokens=1024
